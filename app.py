@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
-import os
-from rapidfuzz import process
-
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 app = Flask(__name__)
 
@@ -127,15 +127,18 @@ def get_response(user_input: str) -> str:
     if not user_input:
         return "Please type something 🙂"
 
-    # Flatten questions list already prepared
-    match = process.extractOne(user_input, questions, score_cutoff=70)
-    if not match:
+    # exit handling (optional)
+    if user_input in ["bye", "goodbye"]:
+        return "Goodbye! Have a nice day 😊"
+
+    user_vec = model_embed.encode([user_input], normalize_embeddings=True)
+    similarity = cosine_similarity(user_vec, question_vectors)
+    best_index = int(np.argmax(similarity))
+    best_score = float(similarity[0][best_index])
+
+    if best_score < 0.50:
         return "Sorry, I don’t understand. Can you rephrase?"
-
-    best_question = match[0]
-    idx = questions.index(best_question)
-    return responses[idx]
-
+    return responses[best_index]
 
 @app.route("/")
 def home():
@@ -148,8 +151,6 @@ def chat():
     bot_reply = get_response(message)
     return jsonify({"reply": bot_reply})
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
-
+    # debug=True for local dev only
+    app.run(host="0.0.0.0", port=5000, debug=True)
