@@ -1,7 +1,2 @@
 flask
-sentence-transformers
-scikit-learn
-numpy
-pandas
 rapidfuzz
-torch
